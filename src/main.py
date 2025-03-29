@@ -4,6 +4,7 @@ import re
 from enum import Enum
 import os
 import shutil
+import sys
 
 
 def copy_files_recursive(source_dir_path, dest_dir_path):
@@ -21,17 +22,18 @@ def copy_files_recursive(source_dir_path, dest_dir_path):
 
 
 dir_path_static = "./static"
-dir_path_public = "./public"
+dir_path_public = "./docs"
 
 
 def main():
+    basepath = sys.argv[1] if len(sys.argv) > 1 else "/"
     print("Deleting public directory...")
     if os.path.exists(dir_path_public):
         shutil.rmtree(dir_path_public)
 
     print("Copying static files to public directory...")
     copy_files_recursive(dir_path_static, dir_path_public)
-    generate_pages_recursively("./content", "./template.html", "./public")
+    generate_pages_recursively(f"./content", f"./template.html", f"./docs", basepath)
 
 class BlockType(Enum):
     PARAGRAPH = "paragraph"
@@ -294,7 +296,7 @@ def extract_title(markdown):
             return line[2:]
     raise Exception("Title not found")
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
     with open(from_path, "r") as f:
         content = f.read()
@@ -305,11 +307,13 @@ def generate_page(from_path, template_path, dest_path):
     html_content = html.to_html()
     html_content = template.replace("{{ Content }}", html_content)
     html_content = html_content.replace("{{ Title }}", title)
+    html_content = html_content.replace('href="/', 'href="{basepath}')
+    html_content = html_content.replace('src="/', 'src="{basepath}')
     
     with open(dest_path, "w") as f:
         f.write(html_content)
 
-def generate_pages_recursively(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursively(dir_path_content, template_path, dest_dir_path, basepath):
     if not os.path.exists(dest_dir_path):
         os.mkdir(dest_dir_path)
 
@@ -318,9 +322,9 @@ def generate_pages_recursively(dir_path_content, template_path, dest_dir_path):
         dest_path = os.path.join(dest_dir_path, filename)
         print(f" * {from_path} -> {dest_path}")
         if os.path.isfile(from_path):
-            generate_page(from_path, template_path, dest_path[:-3] + ".html")
+            generate_page(from_path, template_path, dest_path[:-3] + ".html", basepath)
         else:
-            generate_pages_recursively(from_path, template_path, dest_path)
+            generate_pages_recursively(from_path, template_path, dest_path, basepath)
 
 if __name__ == "__main__":
     main()
